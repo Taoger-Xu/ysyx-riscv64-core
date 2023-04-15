@@ -17,12 +17,24 @@
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <stdlib.h>
 #include "sdb.h"
 
 static int is_batch_mode = false;
 
 void init_regex();
 void init_wp_pool();
+
+/*sdb需要实现的命令的函数声明*/
+static int cmd_help(char *args);
+static int cmd_c(char *args);
+static int cmd_q(char *args);
+static int cmd_si(char *args);
+static int cmd_info(char *args);
+static int cmd_x(char *args);
+// static int cmd_p(char *args);
+// static int cmd_w(char *args);
+// static int cmd_d(char *args);
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
 static char* rl_gets() {
@@ -42,18 +54,6 @@ static char* rl_gets() {
   return line_read;
 }
 
-static int cmd_c(char *args) {
-  cpu_exec(-1);
-  return 0;
-}
-
-
-static int cmd_q(char *args) {
-  return -1;
-}
-
-static int cmd_help(char *args);
-
 static struct {
   const char *name;
   const char *description;
@@ -62,13 +62,27 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
-
+  { "si","Step one instruction exactly", cmd_si},
+  { "info", "Show integer registers and their contents or status of specified watchpoints", cmd_info},
+  {"x", "Examine memory: x N EXPR", cmd_x},
   /* TODO: Add more commands */
 
 };
 
 #define NR_CMD ARRLEN(cmd_table)
 
+/*继续运行被暂停的程序*/
+static int cmd_c(char *args) {
+  cpu_exec(-1);
+  return 0;
+}
+
+/*退出NEMU*/
+static int cmd_q(char *args) {
+  return -1;
+}
+
+/*打印命令的帮助信息*/
 static int cmd_help(char *args) {
   /* extract the first argument */
   char *arg = strtok(NULL, " ");
@@ -92,6 +106,74 @@ static int cmd_help(char *args) {
   return 0;
 }
 
+/*让程序单步执行N条指令后暂停执行,当N没有给出时, 缺省为1*/
+static int cmd_si(char *args){
+  /* extract the first argument */
+  char *arg = strtok(NULL, " ");
+  char* end;
+  /*参数为负数*/
+  uint64_t n = 0;
+  if(arg == NULL){
+    n = 1;
+  }else{
+    if(arg[0] == '-'){
+    printf("A syntax error in expression, only one unsigned int value\n");
+    return 0;
+  }
+    n = strtoul(arg, &end, 10);
+  }
+  /*参数不是整数或者包括非法字符，暂时不做检查*/
+  cpu_exec(n);
+  return 0;
+}
+/*打印寄存器状态或者打印监视点信息*/
+static int cmd_info(char *args){
+  char *arg = strtok(NULL, " ");
+  if(arg == NULL){
+    printf("List of info subcommands: \n");
+    printf("Info r -- List of integer registers and their contents, for selected stack frame.\n");
+    printf("Info w -- Status of specified watchpoints\n");
+    return 0;
+  } 
+  if(strcmp(arg, "r") == 0){
+    isa_reg_display();
+  }else if(strcmp(arg, "w") == 0){
+    watchpoint_display();
+  }else{
+    printf("Undefined info command: %s\n", arg);
+  }
+  return 0;
+}
+
+/*扫描内存,x N EXPR
+求出表达式EXPR的值, 将结果作为起始内存地址, 以十六进制形式输出连续的N个4字节*/
+static int cmd_x(char *args){
+  char *byte_len = strtok(NULL, " ");
+  char *expression = strtok(NULL, " ");
+  char *end = NULL;
+  bool success;
+  if(byte_len == NULL){
+    printf("Argument required\n");
+  }
+  else{
+    /*参数不是整数或者包括非法字符，暂时不做检查*/
+    word_t n = strtoul(byte_len, &end, 10);
+    word_t base_addr = expr(expression, &success);
+    if(success){
+      word_t i;
+      word_t addr;
+      word_t data;
+      for(i = 0; i < n; i ++){
+        addr = base_addr + i * 4;
+        data = vaddr_read(addr, 4);
+        printf("0x%016lX : 0x%08lX\n", addr, data);
+      }
+    }else{
+      printf("A syntax error in expression\n");
+    }
+  }
+  return 0;
+}
 void sdb_set_batch_mode() {
   is_batch_mode = true;
 }

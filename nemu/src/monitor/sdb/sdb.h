@@ -17,7 +17,8 @@
 #define __SDB_H__
 
 #include <common.h>
-
+#include <memory/vaddr.h>
+#include <memory/paddr.h>
 word_t expr(char *e, bool *success);
-
+void watchpoint_display();
 #endif
