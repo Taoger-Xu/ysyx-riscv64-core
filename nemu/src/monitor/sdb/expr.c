@@ -305,7 +305,7 @@ word_t eval(int l, int r, bool *succeed){
           break;
         }
     }
-    if(bracket_num == 0){
+    if(bracket_num != 0){
       //括号不合法终止计算
       *succeed = false;
       panic("Bad expression, the parentheses are not legal");

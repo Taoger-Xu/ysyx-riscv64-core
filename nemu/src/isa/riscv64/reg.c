@@ -24,8 +24,30 @@ const char *regs[] = {
 };
 
 void isa_reg_display() {
+  int i;
+  printf("| reg |         Hex        |          Dec         |\n");
+  for (i = 0; i < ARRLEN(regs); i++) {
+    printf("| %3s | 0x%016lX | %20ld |\n", regs[i], gpr(i), gpr(i));
+  }
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
+  /*特殊寄存器*/
+  if(strcmp(s, "0") == 0 || strcmp(s, "zero") == 0){
+    *success = true;
+    return 0;
+  }
+  else if(strcmp(s, "pc") == 0){
+    *success = true;
+    return cpu.pc;
+  }
+  /*通用寄存器*/
+  for(int i = 0; i < ARRLEN(regs); i++){
+    if(strcmp(s, regs[i]) == 0){
+      *success = true;
+      return gpr(i);
+    }
+  }
+  *success = false;
   return 0;
 }
