@@ -32,7 +32,7 @@ static int cmd_q(char *args);
 static int cmd_si(char *args);
 static int cmd_info(char *args);
 static int cmd_x(char *args);
-// static int cmd_p(char *args);
+static int cmd_p(char *args);
 // static int cmd_w(char *args);
 // static int cmd_d(char *args);
 
@@ -65,6 +65,7 @@ static struct {
   { "si","Step one instruction exactly", cmd_si},
   { "info", "Show integer registers and their contents or status of specified watchpoints", cmd_info},
   {"x", "Examine memory: x N EXPR", cmd_x},
+  {"p","Print value of expression EXPR",cmd_p}
   /* TODO: Add more commands */
 
 };
@@ -171,6 +172,19 @@ static int cmd_x(char *args){
     }else{
       printf("A syntax error in expression\n");
     }
+  }
+  return 0;
+}
+
+/*求出表达式EXPR的值*/
+static int cmd_p(char *args){
+  bool success;
+  word_t EXPR;
+  EXPR = expr(args, &success);
+  if(success){
+    printf("the expression result is:%ld\n",EXPR);
+  }else{
+    printf("Error in the expression,please check it\n");
   }
   return 0;
 }
