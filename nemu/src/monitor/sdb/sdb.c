@@ -182,7 +182,7 @@ static int cmd_p(char *args){
   word_t EXPR;
   EXPR = expr(args, &success);
   if(success){
-    printf("the expression result is:%ld\n",EXPR);
+    printf("the expression result is:%lu\n",EXPR);
   }else{
     printf("Error in the expression,please check it\n");
   }
@@ -197,6 +197,24 @@ void sdb_mainloop() {
     cmd_c(NULL);
     return;
   }
+  
+  /*测试表达式求值*/
+  #ifdef EXPR_TEST
+  for (char *str; (str = rl_gets()) != NULL; ) {
+    // char *str_end = str + strlen(str);
+
+    /* 第一个是表达式的结果 */
+    char *result = strtok(str, " ");
+    word_t ref = strtoul(result, NULL, 10);
+    if (result == NULL) { continue; }
+    /*剩下的是表达式*/
+    char *expression = result + strlen(result) + 1;
+    bool success = true;
+    word_t res = expr(expression, &success);
+    Assert(res==ref, "Error in test, the expression is %s, while the res is %lu\n", expression, res);
+  }
+  Log("%s",ANSI_FMT("ALL tests passed", ANSI_FG_GREEN));
+  #endif
 
   for (char *str; (str = rl_gets()) != NULL; ) {
     char *str_end = str + strlen(str);

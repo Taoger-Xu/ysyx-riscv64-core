@@ -69,7 +69,7 @@ static struct rule {
   {"%",  TK_MOD},
   {"0[xX][0-9a-fA-F]+",TK_HEX},  //十六进制整数优先匹配于十进制整数
   {"[0-9]+", TK_DEC},   //十进制整数
-  {"^(\\$)[0-9a-z]+",},  //reg,寄存器
+  {"^(\\$)[0-9a-z]+",TK_REG},  //reg,寄存器
   {"\\(", TK_LBRACKET},  //左括号
   {"\\)", TK_RBRACKET},  //右括号
   {"&&", TK_AND},        //与运算,必须放在&前面,regex优先匹配
@@ -83,7 +83,7 @@ static struct rule {
 };
 
 #define NR_REGEX ARRLEN(rules)
-#define NR_TOKENS  32  //tokens数组的最大长度 
+#define NR_TOKENS  100  //tokens数组的最大长度 
 static regex_t re[NR_REGEX] = {};
 
 /* Rules are used for many times.
@@ -177,6 +177,7 @@ static word_t strtohex(char *str){
     }else{
       res = res * 16 + str[i] - 'a' + 10;
     }
+    i+=1;
   }
   return res;
 }
@@ -186,15 +187,15 @@ static bool check_parentheses(int l, int r){
   //检测表达式是否合法,非法的停止运算
   int cnt = 0;
   //两端必须为左右括号, 主要排除 a + b
-  bool flag1 = tokens[l].type == '(';
-  bool flag2 = tokens[r].type == ')';
+  bool flag1 = tokens[l].type == TK_LBRACKET;
+  bool flag2 = tokens[r].type == TK_RBRACKET;
   if(flag1 == false || flag2 == false) return false;
 
   //去掉两端后中间左右括号数量相等，且扫描过程中(数量不小于), 排除 (a) + (b)
   for(int i = l + 1; i < r; i ++){
-    if(tokens[i].type == '('){ // 进栈
+    if(tokens[i].type == TK_LBRACKET){ // 进栈
         cnt++;
-    }else if(tokens[i].type == ')'){
+    }else if(tokens[i].type == TK_RBRACKET){
       if(cnt == 0){
         return false;
       }
@@ -233,11 +234,13 @@ static int get_prior(int op){
 
 /* l, r 分别是子表达式的开始位置和结束位置,succeed用来传递求值函数是否成功*/
 word_t eval(int l, int r, bool *succeed){
+
   word_t res;
   int main_op_pos = -1; //主运算符位置.
   int bracket_num = 0; // 左括号数量，判断表达式括号是否匹配
   int op_prior;    // 主运算符的优先级最低
   int low_prior = -1; //最高优先级
+
   if(l > r){
     *succeed = false;
     printf("Bad expression, eval failed in %d\n", l);
@@ -280,10 +283,10 @@ word_t eval(int l, int r, bool *succeed){
         //非运算符的token不是主运算符
         case TK_DEC : case TK_HEX : case TK_REG :
           break;
-        case '(':
+        case TK_LBRACKET:
           bracket_num++;
           break;
-        case ')':
+        case TK_RBRACKET:
           if(bracket_num == 0){
             //括号不合法终止计算
             *succeed = false;
@@ -442,7 +445,7 @@ static void analyse_token(){
     // 2. 前一个字符不是操作数
     // 3. 前面一个字符不是),即是表达式
     if(tokens[i].type == TK_SUB_MINUS){
-      if(i == 0 || !IS_OPERAND(tokens[i-1].type) || tokens[i-1].type != TK_RBRACKET){
+      if(i == 0 || (!IS_OPERAND(tokens[i-1].type) && tokens[i-1].type != TK_RBRACKET)){
           tokens[i].type = TK_MINUS;
       }else{
           tokens[i].type = TK_SUB;
@@ -450,7 +453,7 @@ static void analyse_token(){
     }
    //是解引用的条件: 同上
     if(tokens[i].type == TK_MUL_DEREF){
-      if(i == 0 || !IS_OPERAND(tokens[i-1].type) || tokens[i-1].type != TK_RBRACKET){
+      if(i == 0 || (!IS_OPERAND(tokens[i-1].type) && tokens[i-1].type != TK_RBRACKET)){
           tokens[i].type = TK_DEREF;
       }else{
           tokens[i].type = TK_MUL;
