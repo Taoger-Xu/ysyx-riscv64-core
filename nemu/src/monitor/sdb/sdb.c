@@ -33,8 +33,8 @@ static int cmd_si(char *args);
 static int cmd_info(char *args);
 static int cmd_x(char *args);
 static int cmd_p(char *args);
-// static int cmd_w(char *args);
-// static int cmd_d(char *args);
+static int cmd_w(char *args);
+static int cmd_d(char *args);
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
 static char* rl_gets() {
@@ -65,7 +65,9 @@ static struct {
   { "si","Step one instruction exactly", cmd_si},
   { "info", "Show integer registers and their contents or status of specified watchpoints", cmd_info},
   {"x", "Examine memory: x N EXPR", cmd_x},
-  {"p","Print value of expression EXPR",cmd_p}
+  {"p","Print value of expression EXPR",cmd_p},
+  { "w", "Set a watchpoint for EXPRESSION", cmd_w},
+  { "d", "Delete a watchpoint", cmd_d},
   /* TODO: Add more commands */
 
 };
@@ -139,7 +141,7 @@ static int cmd_info(char *args){
   if(strcmp(arg, "r") == 0){
     isa_reg_display();
   }else if(strcmp(arg, "w") == 0){
-    watchpoint_display();
+    display_wp();
   }else{
     printf("Undefined info command: %s\n", arg);
   }
@@ -188,6 +190,44 @@ static int cmd_p(char *args){
   }
   return 0;
 }
+/*设置监视点*/
+static int cmd_w(char *args){
+#ifdef CONFIG_WATCHPOINT
+  bool success = true;
+  WP *wp = new_wp(args, &success);
+  if(!success){
+    printf("Failed to create watchpoint with expr \'%s\'\n", args);
+    return 1;
+  }else{
+    printf("Created watchpoint NO %d, now \'%s\'=%lu\n", wp->NO, wp->expression, wp->old_val);
+    return 0;
+  }
+#else 
+  printf("watchpoint function turned off, please make menuconfig\n");
+  return 0;
+#endif
+}
+
+/*删除监视点*/
+static int cmd_d(char *args){
+#ifdef CONFIG_WATCHPOINT
+  bool success = true;
+  char *arg = strtok(NULL, " ");
+  int id = strtoul(arg, NULL, 10);
+  success = delete_wp(id);
+  if (!success) {
+    printf("No such watchpoint NO %d\n", id);
+    return 1;
+  }
+  printf("Removed watchpoint NO %d\n", id);
+  return 0;
+
+#else 
+  printf("watchpoint function turned off, please make menuconfig\n");
+  return 0;
+#endif
+}
+
 void sdb_set_batch_mode() {
   is_batch_mode = true;
 }

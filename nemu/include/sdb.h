@@ -19,6 +19,19 @@
 #include <common.h>
 #include <memory/vaddr.h>
 #include <memory/paddr.h>
+typedef struct watchpoint {
+  int NO;
+  struct watchpoint *next;
+
+  /* TODO: Add more members if necessary */
+  char *expression;
+  word_t old_val;
+} WP;
+
 word_t expr(char *e, bool *success);
-void watchpoint_display();
+void init_wp_pool();
+WP* new_wp(char *exprseeion, bool *success);
+bool check_wp();
+bool delete_wp(int id);
+void display_wp();
 #endif
